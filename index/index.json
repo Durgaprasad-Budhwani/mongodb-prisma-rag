@@ -1,0 +1,11 @@
+{
+  "type": "vectorSearch",
+  "fields": [
+    {
+      "type": "vector",
+      "path": "award_embeddings",
+      "numDimensions": 1536,
+      "similarity": "euclidean"
+    }
+  ]
+}
