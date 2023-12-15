@@ -4,14 +4,13 @@ import * as fs from "fs";
 import csvParser from "csv-parser";
 import {OpenAIEmbeddings} from 'langchain/embeddings/openai';
 import { PromptTemplate } from "langchain/prompts";
-import { StringOutputParser } from "langchain/schema/output_parser";
+import { OpenAI } from "langchain/llms/openai";
+import {LLMChain} from "langchain/chains";
+import * as path from "path";
 
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: process.env.OPENAI_API_KEY,
 })
-
-import { OpenAI } from "langchain/llms/openai";
-import {LLMChain} from "langchain/chains";
 
 const model = new OpenAI({
   openAIApiKey: process.env.OPENAI_API_KEY,
@@ -120,7 +119,7 @@ const processCSVData = async (filePath: string) => {
 };
 
 
-// const csvFilePath = path.join(__dirname, '..', 'data', 'the_oscar_award.csv');
-// processCSVData(csvFilePath);
+const csvFilePath = path.join(__dirname, '..', 'data', 'the_oscar_award.csv');
+processCSVData(csvFilePath);
 
 searchAward("Who one the best supporting role award. Answer only name");
