@@ -1,20 +1,29 @@
 import {PrismaClient} from '@prisma/client';
-import * as path from "path";
 import * as fs from "fs";
 // @ts-ignore
 import csvParser from "csv-parser";
 import {OpenAIEmbeddings} from 'langchain/embeddings/openai';
+import { PromptTemplate } from "langchain/prompts";
+import { StringOutputParser } from "langchain/schema/output_parser";
 
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: process.env.OPENAI_API_KEY,
 })
 
+import { OpenAI } from "langchain/llms/openai";
+import {LLMChain} from "langchain/chains";
+
+const model = new OpenAI({
+  openAIApiKey: process.env.OPENAI_API_KEY,
+});
+
+
 const prisma = new PrismaClient();
 
 interface Award {
   id: string;
-  yearFilm: number;
-  yearCeremony: number;
+  year_film: number;
+  year_ceremony: number;
   ceremony: string;
   category: string;
   name: string;
@@ -32,8 +41,8 @@ export const createAward = async (data: Award) => {
   );
   await prisma.awards.create({
     data: {
-      year_film: Number(data.yearFilm),
-      year_ceremony: Number(data.yearCeremony),
+      year_film: Number(data.year_film),
+      year_ceremony: Number(data.year_ceremony),
       ceremony: data.ceremony,
       category: data.category,
       name: data.name,
@@ -46,8 +55,8 @@ export const createAward = async (data: Award) => {
 }
 
 const formatAwardSentence = (awardData: Award): string => {
-  const {yearCeremony, category, name, winner} = awardData;
-  return `In the ${yearCeremony} Oscar Awards, the category ${category} was nominated ${name} and ${winner ? 'won' : 'did not win'}  the award.`;
+  const {year_ceremony, category, name, winner} = awardData;
+  return `In the ${year_ceremony} Oscar Awards, the category ${category} was nominated ${name} and ${winner ? 'won' : 'did not win'}  the award.`;
 };
 
 const searchAward = async (query: string) => {
@@ -77,7 +86,22 @@ const searchAward = async (query: string) => {
       }
     ]
   });
-  console.log(result);
+  if (result) {
+    // @ts-ignore
+    const description = result?.map((item: any) => item.description).join('\n') || '';
+    const prompt = PromptTemplate.fromTemplate(
+      `Answer the question based on only the following context:
+        {context}
+        Question: {question}`
+    );
+    const chain = new LLMChain({ llm: model, prompt });
+    const res = await chain.call({
+      context: description,
+      question: query,
+    });
+
+    console.log(res);
+  }
 }
 
 // Function to read CSV data and perform upsert for each record
@@ -85,7 +109,7 @@ const processCSVData = async (filePath: string) => {
   fs.createReadStream(filePath)
     .pipe(csvParser())
     .on('data', async (row: Award) => {
-      if (Number(row.yearCeremony) >= 2023 && row.name && row.film) {
+      if (Number(row.year_ceremony) >= 2023 && row.name && row.film) {
         await createAward(row); // Assuming row is an object with CSV data
       }
     })
@@ -96,7 +120,7 @@ const processCSVData = async (filePath: string) => {
 };
 
 
-const csvFilePath = path.join(__dirname, '..', 'data', 'the_oscar_award.csv');
-processCSVData(csvFilePath);
+// const csvFilePath = path.join(__dirname, '..', 'data', 'the_oscar_award.csv');
+// processCSVData(csvFilePath);
 
-searchAward("ACTOR IN A SUPPORTING ROLE");
+searchAward("Who one the best supporting role award. Answer only name");
